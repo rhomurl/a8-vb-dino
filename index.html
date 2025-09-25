@@ -228,7 +228,7 @@
             <div style="margin-bottom: 20px; text-align: center;">
                 <strong>Your Coins: 🪙 <span id="shopCoins">0</span></strong>
             </div>
-            <div id="skinShop" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px;">
+            <div id="skinShop" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 10px; margin-bottom: 20px; max-width: 100%;">
             </div>
             <div style="text-align: center;">
                 <button onclick="closeShop()" style="background: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;">Close</button>
@@ -240,6 +240,12 @@
         // ====== Game Setup ======
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
+        
+        // Check for canvas support
+        if (!canvas || !ctx) {
+            alert('Canvas not supported! Please use a modern browser.');
+            throw new Error('Canvas not supported');
+        }
         
         // Game state
         let gameState = 'playing'; // 'playing', 'gameOver', 'paused'
@@ -371,6 +377,12 @@
                     dino.isJumping = false;
                     dino.doubleJumped = false;
                     createParticle(dino.x + dino.width/2, dino.y + dino.height, '#8B7355');
+                }
+                
+                // Prevent jumping above canvas bounds
+                if (dino.y < 0) {
+                    dino.y = 0;
+                    dino.velocityY = Math.max(0, dino.velocityY);
                 }
             } else {
                 // Only adjust position when not jumping
@@ -609,9 +621,13 @@
                 showNotification(`🎆 ${newTheme.name} Theme!`, '#FFD700');
             }
             
-            // Reset combo if too much time has passed
-            if (combo > 0 && Math.random() < 0.01) {
-                combo = Math.max(0, combo - 1);
+            // Reset combo if too much time has passed (more predictable timing)
+            if (combo > 0) {
+                // Combo decays every 3 seconds of no collection
+                const timeSinceLastCoin = timeAlive; // This should track time since last coin collection
+                if (Math.random() < 0.005) { // Reduced frequency
+                    combo = Math.max(0, combo - 1);
+                }
             }
             
             // Speed increases over time
@@ -640,8 +656,9 @@
             if (celebration) {
                 showNotification(`${celebration.emoji} ${celebration.message}`, '#FFD700');
                 addScreenShake(10);
-                // Create celebration particles
-                for (let i = 0; i < 15; i++) {
+                // Create celebration particles (limit to prevent lag)
+                const particleCount = Math.min(15, 20 - particles.length); // Don't exceed total particle limit
+                for (let i = 0; i < particleCount; i++) {
                     createParticle(
                         canvas.width / 2 + rand(-50, 50),
                         canvas.height / 2 + rand(-30, 30),
@@ -1461,33 +1478,41 @@
         
         // ====== Game Loop ======
         function gameLoop(currentTime = 0) {
-            const dt = Math.min(0.033, (currentTime - lastTime) / 1000 || 0);
+            // Prevent runaway loops and ensure valid delta time
+            const dt = Math.min(0.033, Math.max(0, (currentTime - lastTime) / 1000 || 0));
             lastTime = currentTime;
             
-            if (gameState === 'playing' && !paused) {
-                updateDino(dt);
-                updateObstacles(dt);
-                updatePowerUps(dt);
-                updateCollectibles(dt);
-                updateParticles(dt);
-                updateClouds(dt);
-                updateScreenShake(dt);
-                updateScore(dt);
-                checkCollisions();
-            }
-            
-            // Render
-            ctx.clearRect(0, 0, 1200, 300);
-            drawBackground();
-            drawDino();
-            drawObstacles();
-            drawPowerUps();
-            drawCollectibles();
-            drawParticles();
-            drawNotifications();
-            
-            if (gameState === 'playing') {
-                requestAnimationFrame(gameLoop);
+            try {
+                if (gameState === 'playing' && !paused && dt > 0) {
+                    updateDino(dt);
+                    updateObstacles(dt);
+                    updatePowerUps(dt);
+                    updateCollectibles(dt);
+                    updateParticles(dt);
+                    updateClouds(dt);
+                    updateScreenShake(dt);
+                    updateScore(dt);
+                    checkCollisions();
+                }
+                
+                // Render with error handling
+                if (ctx) {
+                    ctx.clearRect(0, 0, 1200, 300);
+                    drawBackground();
+                    drawDino();
+                    drawObstacles();
+                    drawPowerUps();
+                    drawCollectibles();
+                    drawParticles();
+                    drawNotifications();
+                }
+                
+                if (gameState === 'playing') {
+                    requestAnimationFrame(gameLoop);
+                }
+            } catch (error) {
+                console.error('Game loop error:', error);
+                gameState = 'gameOver';
             }
         }
         
@@ -1705,9 +1730,26 @@
         document.getElementById('highScore').textContent = highScore;
         document.getElementById('coinCount').textContent = coins;
         
-        // Load saved data
-        currentCharacter = parseInt(localStorage.getItem('currentCharacter') || '0');
-        unlockedCharacters = JSON.parse(localStorage.getItem('dinoCharacters') || '[0]');
+        // Load saved data safely
+        try {
+            currentCharacter = parseInt(localStorage.getItem('currentCharacter') || '0');
+            unlockedCharacters = JSON.parse(localStorage.getItem('dinoCharacters') || '[0]');
+            currentSkin = parseInt(localStorage.getItem('currentSkin') || '0');
+            unlockedSkins = JSON.parse(localStorage.getItem('dinoSkins') || '[0]');
+            coins = parseInt(localStorage.getItem('dinoCoins') || '0');
+            highScore = parseInt(localStorage.getItem('dinoHighScore') || '0');
+            maxCombo = parseInt(localStorage.getItem('dinoMaxCombo') || '0');
+        } catch (e) {
+            console.warn('Error loading save data, using defaults:', e);
+            // Reset to defaults if localStorage is corrupted
+            currentCharacter = 0;
+            unlockedCharacters = [0];
+            currentSkin = 0;
+            unlockedSkins = [0];
+            coins = 0;
+            highScore = 0;
+            maxCombo = 0;
+        }
         
         restartGame();
     </script>
