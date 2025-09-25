@@ -1,0 +1,1715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🦕 Dino Runner - Ancient8 Edition</title>
+    <style>
+        html, body { 
+            height: 100%; 
+            margin: 0; 
+            background: linear-gradient(135deg, #87CEEB 0%, #98FB98 100%);
+            color: #2c3e50; 
+            font-family: 'Courier New', monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            user-select: none;
+            touch-action: manipulation;
+        }
+        
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            padding: 20px;
+        }
+        
+        .hud {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px 25px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            font-weight: bold;
+            font-size: 18px;
+        }
+        
+        .score-display {
+            color: #2c3e50;
+        }
+        
+        .high-score {
+            color: #e74c3c;
+        }
+        
+        .speed-display {
+            color: #3498db;
+        }
+        
+        .coin-display {
+            color: #f39c12;
+        }
+        
+        .combo-display {
+            color: #e74c3c;
+        }
+        
+        #gameCanvas {
+            border: 3px solid #34495e;
+            background: #f7f7f7;
+            cursor: pointer;
+            display: block;
+            border-radius: 10px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+        
+        .controls {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px 25px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            max-width: 600px;
+        }
+        
+        .controls h3 {
+            margin: 0 0 10px 0;
+            color: #2c3e50;
+        }
+        
+        .controls p {
+            margin: 5px 0;
+            color: #7f8c8d;
+        }
+        
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            display: none;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            border: 3px solid #e74c3c;
+        }
+        
+        #gameOver h2 {
+            color: #e74c3c;
+            margin: 0 0 15px 0;
+            font-size: 28px;
+        }
+        
+        #gameOver p {
+            margin: 8px 0;
+            color: #2c3e50;
+            font-size: 16px;
+        }
+        
+        .restart-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: background 0.3s;
+        }
+        
+        .restart-btn:hover {
+            background: #2980b9;
+        }
+        
+        #pauseIndicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            display: none;
+            font-size: 24px;
+            font-weight: bold;
+            color: #f39c12;
+            border: 3px solid #f39c12;
+        }
+        
+        .skin-item {
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .skin-item:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        
+        .skin-item.owned {
+            border-color: #2ecc71;
+            background: rgba(46, 204, 113, 0.1);
+        }
+        
+        .skin-item.selected {
+            border-color: #3498db;
+            background: rgba(52, 152, 219, 0.2);
+        }
+        
+        .skin-preview {
+            width: 40px;
+            height: 30px;
+            margin: 0 auto 5px;
+            border-radius: 4px;
+        }
+        
+        @keyframes rainbow {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        .particle {
+            position: absolute;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="hud">
+            <div class="score-display">Score: <span id="currentScore">0</span></div>
+            <div class="high-score">Best: <span id="highScore">0</span></div>
+            <div class="speed-display">Speed: <span id="gameSpeed">1.0x</span></div>
+            <div class="coin-display">🪙 <span id="coinCount">0</span></div>
+            <div class="combo-display">Combo: <span id="comboCount">0</span></div>
+        </div>
+        
+        <div style="position: relative;">
+            <canvas id="gameCanvas" width="1200" height="300"></canvas>
+            
+            <div id="gameOver">
+                <h2>🦕 Game Over!</h2>
+                <p>Final Score: <span id="finalScore">0</span></p>
+                <p>Best Score: <span id="bestScore">0</span></p>
+                <p>Press SPACEBAR or click to restart</p>
+                <button class="restart-btn" onclick="restartGame()">Play Again</button>
+            </div>
+
+            <div id="pauseIndicator">
+                <p>⏸️ PAUSED</p>
+                <p>Press P to resume</p>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <h3>🦕 Dino Runner Controls</h3>
+            <p><strong>Jump:</strong> SPACEBAR, ↑ Arrow, or Click/Tap</p>
+            <p><strong>Crouch:</strong> ↓ Arrow or Swipe Down</p>
+            <p><strong>Pause:</strong> P key | <strong>Restart:</strong> R key | <strong>Shop:</strong> S key</p>
+            <p>Collect 🪙 coins and grab ⚡ power-ups! Background changes every 250 points!</p>
+        </div>
+        
+        <div id="shopModal" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(255, 255, 255, 0.95); padding: 30px; border-radius: 15px; display: none; max-width: 400px; border: 3px solid #3498db;">
+            <h2 style="color: #3498db; text-align: center; margin-top: 0;">🏪 Dino Shop</h2>
+            <div style="margin-bottom: 20px; text-align: center;">
+                <strong>Your Coins: 🪙 <span id="shopCoins">0</span></strong>
+            </div>
+            <div id="skinShop" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px;">
+            </div>
+            <div style="text-align: center;">
+                <button onclick="closeShop()" style="background: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ====== Game Setup ======
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Game state
+        let gameState = 'playing'; // 'playing', 'gameOver', 'paused'
+        let score = 0;
+        let coins = parseInt(localStorage.getItem('dinoCoins') || '0');
+        let highScore = parseInt(localStorage.getItem('dinoHighScore') || '0');
+        let gameSpeed = 1.0;
+        let timeAlive = 0;
+        let paused = false;
+        let combo = 0;
+        let maxCombo = parseInt(localStorage.getItem('dinoMaxCombo') || '0');
+        let screenShake = { x: 0, y: 0, intensity: 0 };
+        let currentTheme = 0;
+        let unlockedSkins = JSON.parse(localStorage.getItem('dinoSkins') || '[0]');
+        let currentSkin = parseInt(localStorage.getItem('currentSkin') || '0');
+        let currentCharacter = parseInt(localStorage.getItem('currentCharacter') || '0');
+        let unlockedCharacters = JSON.parse(localStorage.getItem('dinoCharacters') || '[0]');
+        
+        // Game objects
+        let dino = {
+            x: 80,
+            y: 200,
+            width: 40,
+            height: 50,
+            velocityY: 0,
+            isJumping: false,
+            isCrouching: false,
+            jumpPower: -12, // Reduced from -15 to stay within canvas
+            doubleJumpPower: -10, // Separate power for double jump
+            gravity: 0.8,
+            groundY: 200,
+            hasDoubleJump: false,
+            doubleJumped: false,
+            invincible: false,
+            invincibleTime: 0,
+            speedBoost: false,
+            speedBoostTime: 0
+        };
+        
+        let obstacles = [];
+        let particles = [];
+        let clouds = [];
+        let powerUps = [];
+        let collectibles = [];
+        let achievements = [];
+        let notifications = [];
+        let lastTime = 0;
+        let spawnTimer = 0;
+        let powerUpTimer = 0;
+        let collectibleTimer = 0;
+        
+        // Initialize clouds for background
+        for (let i = 0; i < 5; i++) {
+            clouds.push({
+                x: Math.random() * 1200,
+                y: Math.random() * 100 + 20,
+                size: Math.random() * 20 + 15,
+                speed: Math.random() * 0.5 + 0.2
+            });
+        }
+        
+        // ====== Utility Functions ======
+        function rand(min, max) {
+            return Math.random() * (max - min) + min;
+        }
+        
+        function collision(rect1, rect2) {
+            return rect1.x < rect2.x + rect2.width &&
+                   rect1.x + rect1.width > rect2.x &&
+                   rect1.y < rect2.y + rect2.height &&
+                   rect1.y + rect1.height > rect2.y;
+        }
+        
+        function addScreenShake(intensity) {
+            screenShake.intensity = Math.max(screenShake.intensity, intensity);
+        }
+        
+        function updateScreenShake(dt) {
+            if (screenShake.intensity > 0) {
+                screenShake.x = (Math.random() - 0.5) * screenShake.intensity;
+                screenShake.y = (Math.random() - 0.5) * screenShake.intensity;
+                screenShake.intensity -= dt * 20;
+                if (screenShake.intensity < 0) {
+                    screenShake.intensity = 0;
+                    screenShake.x = 0;
+                    screenShake.y = 0;
+                }
+            }
+        }
+        
+        function createParticle(x, y, color = '#8B7355') {
+            particles.push({
+                x: x,
+                y: y,
+                vx: rand(-2, 2),
+                vy: rand(-3, -1),
+                life: 1.0,
+                color: color,
+                size: rand(2, 4)
+            });
+        }
+        
+        // ====== Game Logic ======
+        function updateDino(dt) {
+            // Update power-up timers
+            if (dino.invincible) {
+                dino.invincibleTime -= dt;
+                if (dino.invincibleTime <= 0) {
+                    dino.invincible = false;
+                }
+            }
+            
+            if (dino.speedBoost) {
+                dino.speedBoostTime -= dt;
+                if (dino.speedBoostTime <= 0) {
+                    dino.speedBoost = false;
+                }
+            }
+            
+            // Apply gravity
+            if (dino.isJumping) {
+                dino.velocityY += dino.gravity * dt * 60;
+                dino.y += dino.velocityY;
+                
+                // Check if landed
+                if (dino.y >= dino.groundY) {
+                    dino.y = dino.groundY;
+                    dino.velocityY = 0;
+                    dino.isJumping = false;
+                    dino.doubleJumped = false;
+                    createParticle(dino.x + dino.width/2, dino.y + dino.height, '#8B7355');
+                }
+            } else {
+                // Only adjust position when not jumping
+                if (dino.isCrouching) {
+                    dino.height = 25;
+                    dino.y = dino.groundY + 25; // Lower the dino
+                } else {
+                    dino.height = 50;
+                    dino.y = dino.groundY;
+                }
+            }
+        }
+        
+        function updateObstacles(dt) {
+            // Move obstacles
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                const obstacle = obstacles[i];
+                obstacle.x -= gameSpeed * 200 * dt;
+                
+                // Remove off-screen obstacles
+                if (obstacle.x + obstacle.width < 0) {
+                    obstacles.splice(i, 1);
+                    score += 10; // Bonus for avoiding obstacle
+                }
+            }
+            
+            // Spawn new obstacles
+            spawnTimer -= dt;
+            if (spawnTimer <= 0) {
+                const obstacleType = Math.random() < 0.7 ? 'cactus' : 'bird';
+                const obstacle = {
+                    type: obstacleType,
+                    x: 1200,
+                    width: obstacleType === 'cactus' ? 25 : 30,
+                    height: obstacleType === 'cactus' ? 40 : 25,
+                    // Cacti on ground, birds at jump height (can be cleared with double jump)
+                    y: obstacleType === 'cactus' ? dino.groundY + 10 : dino.groundY - 60
+                };
+                obstacles.push(obstacle);
+                
+                // Dynamic spawn rate based on speed
+                spawnTimer = rand(1.5, 3.0) / gameSpeed;
+            }
+        }
+        
+        function updateParticles(dt) {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const particle = particles[i];
+                particle.x += particle.vx * dt * 60;
+                particle.y += particle.vy * dt * 60;
+                particle.vy += 0.5 * dt * 60; // Gravity
+                particle.life -= dt * 2;
+                
+                if (particle.life <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+        }
+        
+        function updateClouds(dt) {
+            for (const cloud of clouds) {
+                cloud.x -= cloud.speed * dt * 60;
+                if (cloud.x < -cloud.size) {
+                    cloud.x = 1200 + cloud.size;
+                }
+            }
+        }
+        
+        function updatePowerUps(dt) {
+            // Move power-ups
+            for (let i = powerUps.length - 1; i >= 0; i--) {
+                const powerUp = powerUps[i];
+                const currentGameSpeed = dino.speedBoost ? gameSpeed * 1.5 : gameSpeed;
+                powerUp.x -= currentGameSpeed * 200 * dt;
+                
+                // Remove off-screen power-ups
+                if (powerUp.x + powerUp.width < 0) {
+                    powerUps.splice(i, 1);
+                }
+            }
+            
+            // Spawn new power-ups
+            powerUpTimer -= dt;
+            if (powerUpTimer <= 0) {
+                const powerUpTypes = ['speed', 'invincible', 'doubleJump'];
+                const type = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
+                powerUps.push({
+                    type: type,
+                    x: 1200,
+                    y: dino.groundY - 30,
+                    width: 30,
+                    height: 30,
+                    collected: false
+                });
+                
+                // Spawn every 15-25 seconds
+                powerUpTimer = rand(15, 25);
+            }
+        }
+        
+        function updateCollectibles(dt) {
+            // Move collectibles
+            for (let i = collectibles.length - 1; i >= 0; i--) {
+                const collectible = collectibles[i];
+                const currentGameSpeed = dino.speedBoost ? gameSpeed * 1.5 : gameSpeed;
+                collectible.x -= currentGameSpeed * 200 * dt;
+                collectible.rotation += dt * 5; // Spinning animation
+                
+                // Remove off-screen collectibles
+                if (collectible.x + collectible.width < 0) {
+                    collectibles.splice(i, 1);
+                }
+            }
+            
+            // Spawn new collectibles
+            collectibleTimer -= dt;
+            if (collectibleTimer <= 0) {
+                collectibles.push({
+                    type: 'coin',
+                    x: 1200,
+                    y: dino.groundY - rand(10, 60),
+                    width: 20,
+                    height: 20,
+                    rotation: 0,
+                    value: 10
+                });
+                
+                // Spawn every 3-8 seconds
+                collectibleTimer = rand(3, 8);
+            }
+        }
+        
+        function checkCollisions() {
+            const dinoRect = {
+                x: dino.x + 5,
+                y: dino.y + 5,
+                width: dino.width - 10,
+                height: dino.height - 10
+            };
+            
+            // Check obstacle collisions
+            if (!dino.invincible) {
+                for (const obstacle of obstacles) {
+                    if (collision(dinoRect, obstacle)) {
+                        addScreenShake(15);
+                        gameOver();
+                        return;
+                    }
+                }
+            }
+            
+            // Check power-up collisions
+            for (let i = powerUps.length - 1; i >= 0; i--) {
+                const powerUp = powerUps[i];
+                if (collision(dinoRect, powerUp)) {
+                    collectPowerUp(powerUp);
+                    powerUps.splice(i, 1);
+                    addScreenShake(5);
+                    createParticle(powerUp.x, powerUp.y, '#FFD700');
+                    createParticle(powerUp.x, powerUp.y, '#FFA500');
+                    createParticle(powerUp.x, powerUp.y, '#FF6B35');
+                }
+            }
+            
+            // Check collectible collisions
+            for (let i = collectibles.length - 1; i >= 0; i--) {
+                const collectible = collectibles[i];
+                if (collision(dinoRect, collectible)) {
+                    coins += collectible.value;
+                    localStorage.setItem('dinoCoins', coins.toString());
+                    collectibles.splice(i, 1);
+                    combo++;
+                    if (combo > maxCombo) {
+                        maxCombo = combo;
+                        localStorage.setItem('dinoMaxCombo', maxCombo.toString());
+                    }
+                    createParticle(collectible.x, collectible.y, '#FFD700');
+                    createParticle(collectible.x, collectible.y, '#FFFF00');
+                }
+            }
+        }
+        
+        function collectPowerUp(powerUp) {
+            switch (powerUp.type) {
+                case 'speed':
+                    dino.speedBoost = true;
+                    dino.speedBoostTime = 8;
+                    showNotification('🚀 Speed Boost!', '#FF6B35');
+                    break;
+                case 'invincible':
+                    dino.invincible = true;
+                    dino.invincibleTime = 10;
+                    showNotification('⭐ Invincible!', '#FFD700');
+                    break;
+                case 'doubleJump':
+                    dino.hasDoubleJump = true;
+                    showNotification('🦘 Double Jump!', '#00CED1');
+                    break;
+            }
+        }
+        
+        function showNotification(text, color = '#FFD700') {
+            notifications.push({
+                text: text,
+                x: canvas.width / 2,
+                y: 100,
+                color: color,
+                life: 1.0,
+                scale: 1.0
+            });
+        }
+        
+        function updateScore(dt) {
+            timeAlive += dt;
+            let scoreMultiplier = 1;
+            const oldScore = Math.floor(score);
+            
+            // Speed boost increases score
+            if (dino.speedBoost) scoreMultiplier *= 1.5;
+            
+            // Combo multiplier
+            if (combo > 0) scoreMultiplier *= (1 + combo * 0.1);
+            
+            score += 10 * dt * scoreMultiplier;
+            const newScore = Math.floor(score);
+            
+            // Milestone celebrations
+            if (Math.floor(oldScore / 500) !== Math.floor(newScore / 500)) {
+                triggerMilestoneCelebration(newScore);
+            }
+            
+            // Theme change celebration (every 250 points)
+            if (Math.floor(oldScore / 250) !== Math.floor(newScore / 250)) {
+                const themes = getThemes();
+                const newTheme = themes[Math.floor(newScore / 250) % themes.length];
+                showNotification(`🎆 ${newTheme.name} Theme!`, '#FFD700');
+            }
+            
+            // Reset combo if too much time has passed
+            if (combo > 0 && Math.random() < 0.01) {
+                combo = Math.max(0, combo - 1);
+            }
+            
+            // Speed increases over time
+            const baseSpeed = dino.speedBoost ? 1.5 : 1.0;
+            gameSpeed = baseSpeed + Math.min(3.0, timeAlive * 0.1);
+            
+            // Update display
+            document.getElementById('currentScore').textContent = Math.floor(score);
+            document.getElementById('gameSpeed').textContent = gameSpeed.toFixed(1) + 'x';
+            document.getElementById('coinCount').textContent = coins;
+            document.getElementById('comboCount').textContent = combo;
+        }
+        
+        function triggerMilestoneCelebration(score) {
+            const celebrations = [
+                { score: 500, emoji: '🎉', message: 'Great job!' },
+                { score: 1000, emoji: '🚀', message: 'Amazing!' },
+                { score: 2000, emoji: '🔥', message: 'On fire!' },
+                { score: 3000, emoji: '⭐', message: 'Superstar!' },
+                { score: 5000, emoji: '🏆', message: 'Champion!' },
+                { score: 7500, emoji: '🤩', message: 'Mind blown!' },
+                { score: 10000, emoji: '👑', message: 'Legendary!' }
+            ];
+            
+            const celebration = celebrations.find(c => score >= c.score && score < c.score + 500);
+            if (celebration) {
+                showNotification(`${celebration.emoji} ${celebration.message}`, '#FFD700');
+                addScreenShake(10);
+                // Create celebration particles
+                for (let i = 0; i < 15; i++) {
+                    createParticle(
+                        canvas.width / 2 + rand(-50, 50),
+                        canvas.height / 2 + rand(-30, 30),
+                        ['#FFD700', '#FF6B35', '#FF1493', '#00CED1', '#32CD32'][Math.floor(Math.random() * 5)]
+                    );
+                }
+            }
+        }
+        
+        // ====== Rendering ======
+        function drawBackground() {
+            // Change theme based on score (every 250 points for demo)
+            const themes = getThemes();
+            currentTheme = Math.floor(score / 250) % themes.length;
+            const theme = themes[currentTheme];
+            
+            // Sky gradient
+            const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+            gradient.addColorStop(0, theme.skyTop);
+            gradient.addColorStop(1, theme.skyBottom);
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 1200, 300);
+            
+            // Theme-specific background elements
+            drawThemeElements(theme);
+            
+            // Draw clouds
+            ctx.fillStyle = theme.cloudColor;
+            for (const cloud of clouds) {
+                ctx.beginPath();
+                ctx.arc(cloud.x, cloud.y, cloud.size, 0, Math.PI * 2);
+                ctx.arc(cloud.x + cloud.size * 0.5, cloud.y, cloud.size * 0.8, 0, Math.PI * 2);
+                ctx.arc(cloud.x - cloud.size * 0.5, cloud.y, cloud.size * 0.8, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Ground line
+            ctx.strokeStyle = theme.groundColor;
+            ctx.lineWidth = 3;
+            ctx.setLineDash([10, 10]);
+            ctx.beginPath();
+            ctx.moveTo(0, dino.groundY + dino.height);
+            ctx.lineTo(1200, dino.groundY + dino.height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+        
+        function getThemes() {
+            return [
+                { // Day theme
+                    name: 'Day',
+                    skyTop: '#87CEEB',
+                    skyBottom: '#98FB98',
+                    cloudColor: 'rgba(255, 255, 255, 0.8)',
+                    groundColor: '#2c3e50',
+                    stars: false
+                },
+                { // Sunset theme
+                    name: 'Sunset',
+                    skyTop: '#FF6B35',
+                    skyBottom: '#F7931E',
+                    cloudColor: 'rgba(255, 200, 100, 0.7)',
+                    groundColor: '#8B4513',
+                    stars: false
+                },
+                { // Night theme
+                    name: 'Night',
+                    skyTop: '#2C3E50',
+                    skyBottom: '#34495E',
+                    cloudColor: 'rgba(200, 200, 200, 0.5)',
+                    groundColor: '#1ABC9C',
+                    stars: true
+                },
+                { // Space theme
+                    name: 'Space',
+                    skyTop: '#0B0B2F',
+                    skyBottom: '#1B1B3A',
+                    cloudColor: 'rgba(100, 50, 200, 0.3)',
+                    groundColor: '#9B59B6',
+                    stars: true
+                },
+                { // Underwater theme
+                    name: 'Ocean',
+                    skyTop: '#006994',
+                    skyBottom: '#47B5FF',
+                    cloudColor: 'rgba(0, 200, 255, 0.4)',
+                    groundColor: '#06283D',
+                    stars: false
+                }
+            ];
+        }
+        
+        function drawThemeElements(theme) {
+            if (theme.stars) {
+                // Draw stars
+                ctx.fillStyle = '#FFD700';
+                for (let i = 0; i < 20; i++) {
+                    const x = (timeAlive * 30 + i * 60) % 1200;
+                    const y = 20 + (i * 13) % 80;
+                    ctx.fillRect(x, y, 2, 2);
+                }
+            }
+            
+            if (theme.name === 'Ocean') {
+                // Draw bubbles
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+                for (let i = 0; i < 10; i++) {
+                    const x = (timeAlive * 50 + i * 120) % 1200;
+                    const y = 100 + Math.sin(timeAlive + i) * 30;
+                    const size = 5 + Math.sin(timeAlive * 2 + i) * 3;
+                    ctx.beginPath();
+                    ctx.arc(x, y, size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+        
+        function drawDino() {
+            ctx.save();
+            
+            // Apply screen shake
+            ctx.translate(screenShake.x, screenShake.y);
+            
+            // Power-up effects
+            if (dino.invincible) {
+                ctx.globalAlpha = 0.7 + Math.sin(timeAlive * 20) * 0.3;
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = '#FFD700';
+            }
+            
+            if (dino.speedBoost) {
+                // Speed lines
+                ctx.strokeStyle = '#FF6B35';
+                ctx.lineWidth = 2;
+                for (let i = 0; i < 5; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(dino.x - 20 - i * 8, dino.y + i * 8);
+                    ctx.lineTo(dino.x - 40 - i * 8, dino.y + i * 8);
+                    ctx.stroke();
+                }
+            }
+            
+            // Draw based on current character
+            drawCharacter(currentCharacter);
+            
+            ctx.restore();
+        }
+        
+        function drawCharacter(characterId) {
+            switch (characterId) {
+                case 0: // Dino
+                    drawDinoCharacter();
+                    break;
+                case 1: // Snake
+                    drawSnake();
+                    break;
+                case 2: // Dog
+                    drawDog();
+                    break;
+                case 3: // Cat
+                    drawCat();
+                    break;
+                case 4: // Tiger
+                    drawTiger();
+                    break;
+                case 5: // Spider
+                    drawSpider();
+                    break;
+                default:
+                    drawDinoCharacter();
+            }
+        }
+        
+        function drawDinoCharacter() {
+            // Get skin colors
+            const skinColors = getSkinColors(currentSkin);
+            
+            if (currentSkin === 8) { // Rainbow skin
+                const hue = (timeAlive * 100) % 360;
+                ctx.fillStyle = `hsl(${hue}, 70%, 50%)`;
+            } else {
+                ctx.fillStyle = skinColors.body;
+            }
+            
+            if (dino.isCrouching && !dino.isJumping) {
+                // Crouching dino
+                ctx.fillRect(dino.x, dino.y, dino.width, dino.height);
+                // Head
+                if (currentSkin === 8) {
+                    const hue = (timeAlive * 120 + 60) % 360;
+                    ctx.fillStyle = `hsl(${hue}, 70%, 50%)`;
+                } else {
+                    ctx.fillStyle = skinColors.body;
+                }
+                ctx.fillRect(dino.x + 5, dino.y - 5, 20, 15);
+                // Eye
+                ctx.fillStyle = skinColors.eye;
+                ctx.fillRect(dino.x + 8, dino.y - 2, 4, 4);
+            } else {
+                // Standing/jumping dino
+                ctx.fillRect(dino.x, dino.y, dino.width, dino.height);
+                // Head
+                if (currentSkin === 8) {
+                    const hue = (timeAlive * 120 + 60) % 360;
+                    ctx.fillStyle = `hsl(${hue}, 70%, 50%)`;
+                } else {
+                    ctx.fillStyle = skinColors.body;
+                }
+                ctx.fillRect(dino.x + 5, dino.y - 15, 20, 20);
+                // Eye
+                ctx.fillStyle = skinColors.eye;
+                ctx.fillRect(dino.x + 8, dino.y - 8, 4, 4);
+                // Legs (animated)
+                if (currentSkin === 8) {
+                    const hue = (timeAlive * 100 + 180) % 360;
+                    ctx.fillStyle = `hsl(${hue}, 70%, 50%)`;
+                } else {
+                    ctx.fillStyle = skinColors.body;
+                }
+                const legOffset = Math.floor(timeAlive * 10) % 2 * 3;
+                ctx.fillRect(dino.x + 8, dino.y + dino.height - 5, 8, 10);
+                ctx.fillRect(dino.x + 20 + legOffset, dino.y + dino.height - 5, 8, 10);
+            }
+            
+            // Add accessories based on skin
+            drawSkinAccessories(currentSkin);
+        }
+        
+        function drawSnake() {
+            // Get skin colors
+            const skinColors = getSkinColors(currentSkin);
+            
+            if (currentSkin === 8) { // Rainbow skin
+                const hue = (timeAlive * 100) % 360;
+                ctx.fillStyle = `hsl(${hue}, 70%, 50%)`;
+            } else {
+                ctx.fillStyle = skinColors.body;
+            }
+            
+            if (dino.isCrouching && !dino.isJumping) {
+                // Crouched snake (flat)
+                ctx.fillRect(dino.x, dino.y + 15, dino.width, dino.height - 15);
+                
+                // Head with different rainbow hue
+                if (currentSkin === 8) {
+                    const hue = (timeAlive * 120 + 60) % 360;
+                    ctx.fillStyle = `hsl(${hue}, 70%, 50%)`;
+                } else {
+                    ctx.fillStyle = skinColors.body;
+                }
+                ctx.fillRect(dino.x + 25, dino.y + 10, 15, 10);
+            } else {
+                // Standing snake (S-shape)
+                ctx.fillRect(dino.x, dino.y, dino.width, dino.height);
+                
+                // Head with different rainbow hue
+                if (currentSkin === 8) {
+                    const hue = (timeAlive * 120 + 60) % 360;
+                    ctx.fillStyle = `hsl(${hue}, 70%, 50%)`;
+                } else {
+                    ctx.fillStyle = skinColors.body;
+                }
+                ctx.fillRect(dino.x + 25, dino.y - 15, 15, 20);
+            }
+            
+            // Eye
+            ctx.fillStyle = skinColors.eye;
+            ctx.fillRect(dino.x + 28, dino.y - (dino.isCrouching ? 5 : 10), 3, 3);
+            ctx.fillStyle = '#000';
+            ctx.fillRect(dino.x + 29, dino.y - (dino.isCrouching ? 4 : 9), 1, 1);
+        }
+        
+        function drawDog() {
+            // Get skin colors
+            const skinColors = getSkinColors(currentSkin);
+            
+            if (currentSkin === 8) { // Rainbow skin
+                const hue = (timeAlive * 100) % 360;
+                ctx.fillStyle = `hsl(${hue}, 70%, 50%)`;
+            } else {
+                ctx.fillStyle = skinColors.body;
+            }
+            
+            if (dino.isCrouching && !dino.isJumping) {
+                // Crouched dog
+                ctx.fillRect(dino.x, dino.y, dino.width, dino.height);
+                
+                // Head and ears with rainbow effects
+                if (currentSkin === 8) {
+                    const hue = (timeAlive * 120 + 60) % 360;
+                    ctx.fillStyle = `hsl(${hue}, 70%, 50%)`;
+                } else {
+                    ctx.fillStyle = skinColors.body;
+                }
+                ctx.fillRect(dino.x + 5, dino.y - 5, 20, 15); // Head
+                
+                // Ears
+                if (currentSkin === 8) {
+                    const hue = (timeAlive * 80 + 120) % 360;
+                    ctx.fillStyle = `hsl(${hue}, 70%, 40%)`;
+                } else {
+                    ctx.fillStyle = skinColors.body;
+                }
+                ctx.fillRect(dino.x + 2, dino.y - 10, 8, 8);
+                ctx.fillRect(dino.x + 20, dino.y - 10, 8, 8);
+            } else {
+                // Standing dog
+                ctx.fillRect(dino.x, dino.y, dino.width, dino.height);
+                
+                // Head with rainbow effects
+                if (currentSkin === 8) {
+                    const hue = (timeAlive * 120 + 60) % 360;
+                    ctx.fillStyle = `hsl(${hue}, 70%, 50%)`;
+                } else {
+                    ctx.fillStyle = skinColors.body;
+                }
+                ctx.fillRect(dino.x + 5, dino.y - 15, 20, 20);
+                
+                // Ears
+                if (currentSkin === 8) {
+                    const hue = (timeAlive * 80 + 120) % 360;
+                    ctx.fillStyle = `hsl(${hue}, 70%, 40%)`;
+                } else {
+                    ctx.fillStyle = skinColors.body;
+                }
+                ctx.fillRect(dino.x + 2, dino.y - 20, 8, 10);
+                ctx.fillRect(dino.x + 20, dino.y - 20, 8, 10);
+                
+                // Legs
+                if (currentSkin === 8) {
+                    const hue = (timeAlive * 100 + 180) % 360;
+                    ctx.fillStyle = `hsl(${hue}, 70%, 50%)`;
+                } else {
+                    ctx.fillStyle = skinColors.body;
+                }
+                const legOffset = Math.floor(timeAlive * 10) % 2 * 2;
+                ctx.fillRect(dino.x + 5, dino.y + dino.height - 5, 6, 8);
+                ctx.fillRect(dino.x + 15 + legOffset, dino.y + dino.height - 5, 6, 8);
+                ctx.fillRect(dino.x + 25, dino.y + dino.height - 5, 6, 8);
+            }
+            
+            // Eyes
+            ctx.fillStyle = skinColors.eye;
+            ctx.fillRect(dino.x + 8, dino.y - (dino.isCrouching ? 2 : 8), 3, 3);
+            ctx.fillRect(dino.x + 16, dino.y - (dino.isCrouching ? 2 : 8), 3, 3);
+        }
+        
+        function drawCat() {
+            // Get skin colors
+            const skinColors = getSkinColors(currentSkin);
+            
+            if (currentSkin === 8) { // Rainbow skin
+                const hue = (timeAlive * 100) % 360;
+                ctx.fillStyle = `hsl(${hue}, 70%, 50%)`;
+            } else {
+                ctx.fillStyle = skinColors.body;
+            }
+            
+            if (dino.isCrouching && !dino.isJumping) {
+                // Crouched cat
+                ctx.fillRect(dino.x, dino.y, dino.width, dino.height);
+                
+                // Head with rainbow effects
+                if (currentSkin === 8) {
+                    const hue = (timeAlive * 120 + 60) % 360;
+                    ctx.fillStyle = `hsl(${hue}, 70%, 50%)`;
+                } else {
+                    ctx.fillStyle = skinColors.body;
+                }
+                ctx.fillRect(dino.x + 5, dino.y - 5, 18, 15);
+                
+                // Pointed ears with rainbow
+                if (currentSkin === 8) {
+                    const hue = (timeAlive * 80 + 120) % 360;
+                    ctx.fillStyle = `hsl(${hue}, 70%, 40%)`;
+                } else {
+                    ctx.fillStyle = skinColors.body;
+                }
+                ctx.beginPath();
+                ctx.moveTo(dino.x + 8, dino.y - 5);
+                ctx.lineTo(dino.x + 12, dino.y - 12);
+                ctx.lineTo(dino.x + 16, dino.y - 5);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.moveTo(dino.x + 14, dino.y - 5);
+                ctx.lineTo(dino.x + 18, dino.y - 12);
+                ctx.lineTo(dino.x + 22, dino.y - 5);
+                ctx.fill();
+            } else {
+                // Standing cat
+                ctx.fillRect(dino.x, dino.y, dino.width, dino.height);
+                
+                // Head with rainbow effects
+                if (currentSkin === 8) {
+                    const hue = (timeAlive * 120 + 60) % 360;
+                    ctx.fillStyle = `hsl(${hue}, 70%, 50%)`;
+                } else {
+                    ctx.fillStyle = skinColors.body;
+                }
+                ctx.fillRect(dino.x + 5, dino.y - 15, 18, 18);
+                
+                // Pointed ears with rainbow
+                if (currentSkin === 8) {
+                    const hue = (timeAlive * 80 + 120) % 360;
+                    ctx.fillStyle = `hsl(${hue}, 70%, 40%)`;
+                } else {
+                    ctx.fillStyle = skinColors.body;
+                }
+                ctx.beginPath();
+                ctx.moveTo(dino.x + 8, dino.y - 15);
+                ctx.lineTo(dino.x + 12, dino.y - 22);
+                ctx.lineTo(dino.x + 16, dino.y - 15);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.moveTo(dino.x + 14, dino.y - 15);
+                ctx.lineTo(dino.x + 18, dino.y - 22);
+                ctx.lineTo(dino.x + 22, dino.y - 15);
+                ctx.fill();
+                
+                // Legs with rainbow
+                if (currentSkin === 8) {
+                    const hue = (timeAlive * 100 + 180) % 360;
+                    ctx.fillStyle = `hsl(${hue}, 70%, 50%)`;
+                } else {
+                    ctx.fillStyle = skinColors.body;
+                }
+                const legOffset = Math.floor(timeAlive * 12) % 2 * 1;
+                ctx.fillRect(dino.x + 6, dino.y + dino.height - 5, 5, 8);
+                ctx.fillRect(dino.x + 14 + legOffset, dino.y + dino.height - 5, 5, 8);
+                ctx.fillRect(dino.x + 22, dino.y + dino.height - 5, 5, 8);
+                ctx.fillRect(dino.x + 29, dino.y + dino.height - 5, 5, 8);
+            }
+            
+            // Eyes (keep special cat color or white)
+            ctx.fillStyle = currentSkin === 7 ? '#e74c3c' : (currentSkin === 8 ? '#fff' : '#2ecc71');
+            ctx.fillRect(dino.x + 9, dino.y - (dino.isCrouching ? 2 : 8), 2, 3);
+            ctx.fillRect(dino.x + 16, dino.y - (dino.isCrouching ? 2 : 8), 2, 3);
+        }
+        
+        function drawTiger() {
+            // Get skin colors
+            const skinColors = getSkinColors(currentSkin);
+            
+            if (currentSkin === 8) { // Rainbow skin
+                const hue = (timeAlive * 100) % 360;
+                ctx.fillStyle = `hsl(${hue}, 70%, 50%)`;
+            } else {
+                ctx.fillStyle = skinColors.body;
+            }
+            
+            if (dino.isCrouching && !dino.isJumping) {
+                // Crouched tiger
+                ctx.fillRect(dino.x, dino.y, dino.width, dino.height);
+                
+                // Head with rainbow effects
+                if (currentSkin === 8) {
+                    const hue = (timeAlive * 120 + 60) % 360;
+                    ctx.fillStyle = `hsl(${hue}, 70%, 50%)`;
+                } else {
+                    ctx.fillStyle = skinColors.body;
+                }
+                ctx.fillRect(dino.x + 5, dino.y - 5, 20, 15);
+                
+                // Stripes
+                if (currentSkin === 8) {
+                    const hue = (timeAlive * 150 + 240) % 360;
+                    ctx.fillStyle = `hsl(${hue}, 90%, 20%)`;
+                } else {
+                    ctx.fillStyle = '#000';
+                }
+                for (let i = 0; i < 3; i++) {
+                    ctx.fillRect(dino.x + 5 + i * 8, dino.y + 2, 2, dino.height - 10);
+                    ctx.fillRect(dino.x + 8 + i * 6, dino.y - 3, 2, 8);
+                }
+            } else {
+                // Standing tiger
+                ctx.fillRect(dino.x, dino.y, dino.width, dino.height);
+                
+                // Head with rainbow effects
+                if (currentSkin === 8) {
+                    const hue = (timeAlive * 120 + 60) % 360;
+                    ctx.fillStyle = `hsl(${hue}, 70%, 50%)`;
+                } else {
+                    ctx.fillStyle = skinColors.body;
+                }
+                ctx.fillRect(dino.x + 5, dino.y - 15, 20, 20);
+                
+                // Stripes
+                if (currentSkin === 8) {
+                    const hue = (timeAlive * 150 + 240) % 360;
+                    ctx.fillStyle = `hsl(${hue}, 90%, 20%)`;
+                } else {
+                    ctx.fillStyle = '#000';
+                }
+                for (let i = 0; i < 4; i++) {
+                    ctx.fillRect(dino.x + 3 + i * 7, dino.y + 5, 2, dino.height - 15);
+                    ctx.fillRect(dino.x + 8 + i * 5, dino.y - 8, 2, 12);
+                }
+            }
+            
+            // Eyes (fierce)
+            ctx.fillStyle = currentSkin === 8 ? '#ff0000' : '#e74c3c';
+            ctx.fillRect(dino.x + 8, dino.y - (dino.isCrouching ? 2 : 8), 3, 2);
+            ctx.fillRect(dino.x + 16, dino.y - (dino.isCrouching ? 2 : 8), 3, 2);
+        }
+        
+        function drawSpider() {
+            // Get skin colors
+            const skinColors = getSkinColors(currentSkin);
+            
+            if (dino.isCrouching && !dino.isJumping) {
+                // Crouched spider (flat)
+                // Body with rainbow effects
+                if (currentSkin === 8) {
+                    const hue = (timeAlive * 100) % 360;
+                    ctx.fillStyle = `hsl(${hue}, 70%, 30%)`;
+                } else {
+                    ctx.fillStyle = skinColors.body;
+                }
+                ctx.fillRect(dino.x + 10, dino.y + 5, 20, 20);
+                
+                // Legs (spread out when crouching)
+                if (currentSkin === 8) {
+                    const hue = (timeAlive * 120 + 180) % 360;
+                    ctx.fillStyle = `hsl(${hue}, 70%, 40%)`;
+                } else {
+                    ctx.fillStyle = skinColors.body;
+                }
+                for (let i = 0; i < 4; i++) {
+                    ctx.fillRect(dino.x + i * 8, dino.y + 15, 15, 2);
+                    ctx.fillRect(dino.x + 25 + i * 3, dino.y + 18, 15, 2);
+                }
+            } else {
+                // Standing spider
+                // Body with rainbow effects
+                if (currentSkin === 8) {
+                    const hue = (timeAlive * 100) % 360;
+                    ctx.fillStyle = `hsl(${hue}, 70%, 30%)`;
+                } else {
+                    ctx.fillStyle = skinColors.body;
+                }
+                ctx.fillRect(dino.x + 10, dino.y, 20, 30);
+                
+                // Head with rainbow effects
+                if (currentSkin === 8) {
+                    const hue = (timeAlive * 120 + 60) % 360;
+                    ctx.fillStyle = `hsl(${hue}, 70%, 40%)`;
+                } else {
+                    ctx.fillStyle = skinColors.body;
+                }
+                ctx.fillRect(dino.x + 15, dino.y - 10, 10, 15);
+                
+                // Legs (animated)
+                if (currentSkin === 8) {
+                    const hue = (timeAlive * 80 + 240) % 360;
+                    ctx.fillStyle = `hsl(${hue}, 70%, 40%)`;
+                } else {
+                    ctx.fillStyle = skinColors.body;
+                }
+                const legOffset = Math.sin(timeAlive * 8) * 3;
+                for (let i = 0; i < 4; i++) {
+                    const yPos = dino.y + 10 + i * 5;
+                    ctx.fillRect(dino.x - 5, yPos + legOffset, 15, 2);
+                    ctx.fillRect(dino.x + 30, yPos - legOffset, 15, 2);
+                }
+            }
+            
+            // Multiple eyes (always red for spooky effect)
+            ctx.fillStyle = '#ff0000';
+            ctx.fillRect(dino.x + 17, dino.y - (dino.isCrouching ? 0 : 5), 2, 2);
+            ctx.fillRect(dino.x + 21, dino.y - (dino.isCrouching ? 0 : 5), 2, 2);
+            ctx.fillRect(dino.x + 16, dino.y - (dino.isCrouching ? -3 : -2), 1, 1);
+            ctx.fillRect(dino.x + 23, dino.y - (dino.isCrouching ? -3 : -2), 1, 1);
+        }
+        
+        function getSkinColors(skinId) {
+            const skins = [
+                { body: '#2c3e50', eye: '#fff' }, // Classic
+                { body: '#e74c3c', eye: '#fff' }, // Red
+                { body: '#3498db', eye: '#fff' }, // Blue  
+                { body: '#2ecc71', eye: '#fff' }, // Green
+                { body: '#f39c12', eye: '#fff' }, // Orange
+                { body: '#9b59b6', eye: '#fff' }, // Purple
+                { body: '#1abc9c', eye: '#fff' }, // Teal
+                { body: '#34495e', eye: '#e74c3c' }, // Dark
+                { body: '#ff0000', eye: '#fff' } // Rainbow (base color, will be overridden)
+            ];
+            return skins[skinId] || skins[0];
+        }
+        
+        function drawSkinAccessories(skinId) {
+            // Add special accessories for certain skins
+            if (skinId === 7) { // Dark skin gets cool shades
+                ctx.fillStyle = '#000';
+                ctx.fillRect(dino.x + 6, dino.y - 10, 12, 3);
+            }
+        }
+        
+        function drawObstacles() {
+            for (const obstacle of obstacles) {
+                ctx.fillStyle = '#27ae60';
+                
+                if (obstacle.type === 'cactus') {
+                    // Cactus
+                    ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+                    // Cactus arms
+                    ctx.fillRect(obstacle.x - 5, obstacle.y + 10, 8, 15);
+                    ctx.fillRect(obstacle.x + obstacle.width - 3, obstacle.y + 15, 8, 12);
+                } else {
+                    // Bird
+                    ctx.fillStyle = '#e74c3c';
+                    ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+                    // Wings (animated)
+                    const wingFlap = Math.floor(timeAlive * 8) % 2;
+                    if (wingFlap) {
+                        ctx.fillRect(obstacle.x - 5, obstacle.y + 5, 35, 4);
+                    } else {
+                        ctx.fillRect(obstacle.x - 3, obstacle.y + 8, 31, 4);
+                    }
+                }
+            }
+        }
+        
+        function drawParticles() {
+            for (const particle of particles) {
+                ctx.globalAlpha = particle.life;
+                ctx.fillStyle = particle.color;
+                ctx.fillRect(particle.x, particle.y, particle.size, particle.size);
+            }
+            ctx.globalAlpha = 1;
+        }
+        
+        function drawPowerUps() {
+            for (const powerUp of powerUps) {
+                ctx.save();
+                ctx.translate(powerUp.x + powerUp.width/2, powerUp.y + powerUp.height/2);
+                ctx.rotate(timeAlive * 2);
+                
+                // Power-up glow effect
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = getPowerUpColor(powerUp.type);
+                
+                ctx.fillStyle = getPowerUpColor(powerUp.type);
+                ctx.fillRect(-powerUp.width/2, -powerUp.height/2, powerUp.width, powerUp.height);
+                
+                // Add symbol
+                ctx.fillStyle = '#fff';
+                ctx.font = '16px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(getPowerUpSymbol(powerUp.type), 0, 5);
+                
+                ctx.restore();
+            }
+        }
+        
+        function drawCollectibles() {
+            for (const collectible of collectibles) {
+                ctx.save();
+                ctx.translate(collectible.x + collectible.width/2, collectible.y + collectible.height/2);
+                ctx.rotate(collectible.rotation);
+                
+                // Coin glow
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = '#FFD700';
+                
+                ctx.fillStyle = '#FFD700';
+                ctx.beginPath();
+                ctx.arc(0, 0, collectible.width/2, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Coin center
+                ctx.fillStyle = '#FFA500';
+                ctx.beginPath();
+                ctx.arc(0, 0, collectible.width/3, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.restore();
+            }
+        }
+        
+        function drawNotifications() {
+            for (let i = notifications.length - 1; i >= 0; i--) {
+                const notif = notifications[i];
+                
+                ctx.save();
+                ctx.translate(notif.x, notif.y);
+                ctx.scale(notif.scale, notif.scale);
+                ctx.globalAlpha = notif.life;
+                
+                ctx.fillStyle = notif.color;
+                ctx.font = 'bold 24px Arial';
+                ctx.textAlign = 'center';
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 3;
+                ctx.strokeText(notif.text, 0, 0);
+                ctx.fillText(notif.text, 0, 0);
+                
+                ctx.restore();
+                
+                // Update notification
+                notif.y -= 50 * (1/60); // Move up
+                notif.life -= (1/60) * 0.8; // Fade out
+                notif.scale += (1/60) * 0.5; // Grow
+                
+                if (notif.life <= 0) {
+                    notifications.splice(i, 1);
+                }
+            }
+        }
+        
+        function getPowerUpColor(type) {
+            switch (type) {
+                case 'speed': return '#FF6B35';
+                case 'invincible': return '#FFD700';
+                case 'doubleJump': return '#00CED1';
+                default: return '#fff';
+            }
+        }
+        
+        function getPowerUpSymbol(type) {
+            switch (type) {
+                case 'speed': return '⚡';
+                case 'invincible': return '⭐';
+                case 'doubleJump': return '⬆️';
+                default: return '?';
+            }
+        }
+        
+        // ====== Game Control ======
+        function jump() {
+            if (!dino.isJumping && !dino.isCrouching) {
+                // Regular jump - good for clearing cacti
+                dino.velocityY = dino.jumpPower;
+                dino.isJumping = true;
+                createParticle(dino.x + dino.width/2, dino.y + dino.height, '#8B7355');
+                addScreenShake(3);
+            } else if (dino.isJumping && !dino.doubleJumped && dino.hasDoubleJump && dino.velocityY > -3) {
+                // Double jump - higher jump to clear birds
+                dino.velocityY = dino.doubleJumpPower; // Use separate double jump power
+                dino.doubleJumped = true;
+                dino.hasDoubleJump = false; // Use up the double jump
+                createParticle(dino.x + dino.width/2, dino.y + dino.height/2, '#00CED1');
+                createParticle(dino.x + dino.width/2, dino.y + dino.height/2, '#FFD700');
+                addScreenShake(5);
+                showNotification('🎆 Double Jump!', '#00CED1');
+            }
+        }
+        
+        function crouch() {
+            dino.isCrouching = true;
+        }
+        
+        function stopCrouch() {
+            dino.isCrouching = false;
+        }
+        
+        function gameOver() {
+            gameState = 'gameOver';
+            const finalScore = Math.floor(score);
+            
+            if (finalScore > highScore) {
+                highScore = finalScore;
+                localStorage.setItem('dinoHighScore', highScore.toString());
+            }
+            
+            document.getElementById('finalScore').textContent = finalScore;
+            document.getElementById('bestScore').textContent = highScore;
+            document.getElementById('gameOver').style.display = 'block';
+        }
+        
+        function restartGame() {
+            gameState = 'playing';
+            score = 0;
+            timeAlive = 0;
+            gameSpeed = 1.0;
+            combo = 0;
+            obstacles = [];
+            particles = [];
+            powerUps = [];
+            collectibles = [];
+            notifications = [];
+            screenShake = { x: 0, y: 0, intensity: 0 };
+            dino.y = dino.groundY;
+            dino.velocityY = 0;
+            dino.isJumping = false;
+            dino.isCrouching = false;
+            dino.hasDoubleJump = false;
+            dino.doubleJumped = false;
+            dino.invincible = false;
+            dino.invincibleTime = 0;
+            dino.speedBoost = false;
+            dino.speedBoostTime = 0;
+            paused = false;
+            spawnTimer = 0;
+            powerUpTimer = rand(10, 20); // First power-up in 10-20 seconds
+            collectibleTimer = rand(2, 5); // First collectible in 2-5 seconds
+            
+            document.getElementById('gameOver').style.display = 'none';
+            document.getElementById('pauseIndicator').style.display = 'none';
+            document.getElementById('highScore').textContent = highScore;
+            document.getElementById('coinCount').textContent = coins;
+            
+            lastTime = 0;
+            requestAnimationFrame(gameLoop);
+        }
+        
+        function togglePause() {
+            if (gameState === 'playing') {
+                paused = !paused;
+                document.getElementById('pauseIndicator').style.display = paused ? 'block' : 'none';
+                if (!paused) {
+                    lastTime = performance.now();
+                    requestAnimationFrame(gameLoop);
+                }
+            }
+        }
+        
+        // ====== Game Loop ======
+        function gameLoop(currentTime = 0) {
+            const dt = Math.min(0.033, (currentTime - lastTime) / 1000 || 0);
+            lastTime = currentTime;
+            
+            if (gameState === 'playing' && !paused) {
+                updateDino(dt);
+                updateObstacles(dt);
+                updatePowerUps(dt);
+                updateCollectibles(dt);
+                updateParticles(dt);
+                updateClouds(dt);
+                updateScreenShake(dt);
+                updateScore(dt);
+                checkCollisions();
+            }
+            
+            // Render
+            ctx.clearRect(0, 0, 1200, 300);
+            drawBackground();
+            drawDino();
+            drawObstacles();
+            drawPowerUps();
+            drawCollectibles();
+            drawParticles();
+            drawNotifications();
+            
+            if (gameState === 'playing') {
+                requestAnimationFrame(gameLoop);
+            }
+        }
+        
+        // ====== Event Listeners ======
+        document.addEventListener('keydown', (e) => {
+            if (gameState === 'gameOver' && (e.code === 'Space' || e.code === 'ArrowUp')) {
+                restartGame();
+                return;
+            }
+            
+            if (gameState === 'playing') {
+                if (e.code === 'Space' || e.code === 'ArrowUp') {
+                    e.preventDefault();
+                    jump();
+                } else if (e.code === 'ArrowDown') {
+                    e.preventDefault();
+                    crouch();
+                } else if (e.code === 'KeyP') {
+                    togglePause();
+                } else if (e.code === 'KeyR') {
+                    restartGame();
+                } else if (e.code === 'KeyS') {
+                    openShop();
+                }
+            } else if (e.code === 'KeyS' && gameState !== 'gameOver') {
+                openShop();
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            if (e.code === 'ArrowDown') {
+                stopCrouch();
+            }
+        });
+        
+        // Touch controls
+        let touchStartY = 0;
+        
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            touchStartY = e.changedTouches[0].clientY;
+        });
+        
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            if (gameState === 'gameOver') {
+                restartGame();
+                return;
+            }
+            
+            const touchEndY = e.changedTouches[0].clientY;
+            const deltaY = touchEndY - touchStartY;
+            
+            if (Math.abs(deltaY) < 30) {
+                jump();
+            } else if (deltaY > 40) {
+                crouch();
+                setTimeout(stopCrouch, 300);
+            }
+        });
+        
+        // Mouse controls
+        canvas.addEventListener('click', (e) => {
+            if (gameState === 'gameOver') {
+                restartGame();
+            } else if (gameState === 'playing') {
+                jump();
+            }
+        });
+        
+        // Shop functionality
+        function openShop() {
+            if (gameState === 'playing') {
+                togglePause();
+            }
+            updateShopDisplay();
+            document.getElementById('shopModal').style.display = 'block';
+        }
+        
+        function closeShop() {
+            document.getElementById('shopModal').style.display = 'none';
+            if (paused && gameState === 'playing') {
+                togglePause();
+            }
+        }
+        
+        function updateShopDisplay() {
+            document.getElementById('shopCoins').textContent = coins;
+            const shopContainer = document.getElementById('skinShop');
+            shopContainer.innerHTML = '';
+            
+            // Color variations that work for all characters
+            const skinData = [
+                { id: 0, name: 'Classic', price: 0, color: '#2c3e50', type: 'skin' },
+                { id: 1, name: 'Red', price: 1, color: '#e74c3c', type: 'skin' },
+                { id: 2, name: 'Blue', price: 2, color: '#3498db', type: 'skin' },
+                { id: 3, name: 'Green', price: 3, color: '#2ecc71', type: 'skin' },
+                { id: 4, name: 'Orange', price: 4, color: '#f39c12', type: 'skin' },
+                { id: 5, name: 'Purple', price: 5, color: '#9b59b6', type: 'skin' },
+                { id: 6, name: 'Teal', price: 6, color: '#1abc9c', type: 'skin' },
+                { id: 7, name: 'Dark', price: 7, color: '#34495e', type: 'skin' },
+                { id: 8, name: 'Rainbow', price: 10, color: 'rainbow', type: 'skin' }
+            ];
+            
+            // New unlockable characters with default classic colors
+            const characterData = [
+                { id: 0, name: '🦕 Dino', price: 0, type: 'character' },
+                { id: 1, name: '🐍 Snake', price: 3, type: 'character' },
+                { id: 2, name: '🐶 Dog', price: 4, type: 'character' },
+                { id: 3, name: '🐱 Cat', price: 5, type: 'character' },
+                { id: 4, name: '🐅 Tiger', price: 8, type: 'character' },
+                { id: 5, name: '🕷️ Spider', price: 10, type: 'character' }
+            ];
+            
+            // Add character selection title
+            const characterTitle = document.createElement('div');
+            characterTitle.innerHTML = '<h3 style="grid-column: 1/-1; text-align: center; margin: 10px 0; color: #2c3e50;">Characters</h3>';
+            shopContainer.appendChild(characterTitle);
+            
+            // Add characters
+            characterData.forEach(char => {
+                const charElement = document.createElement('div');
+                charElement.className = 'skin-item';
+                
+                if (unlockedCharacters.includes(char.id)) {
+                    charElement.classList.add('owned');
+                    if (char.id === currentCharacter) {
+                        charElement.classList.add('selected');
+                    }
+                }
+                
+                // Use current skin color for preview
+                const previewColor = getSkinColors(currentSkin).body;
+                const displayColor = currentSkin === 8 ? '#ff0000' : previewColor; // Rainbow shows as red in preview
+                
+                charElement.innerHTML = `
+                    <div class="character-preview" style="background: ${displayColor}; width: 40px; height: 30px; margin: 0 auto 5px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 16px; color: white; text-shadow: 1px 1px 1px #000;">
+                        ${char.name.split(' ')[0]}
+                    </div>
+                    <div style="font-size: 11px; font-weight: bold;">${char.name.split(' ')[1] || char.name}</div>
+                    <div style="font-size: 10px;">${unlockedCharacters.includes(char.id) ? (char.id === currentCharacter ? 'ACTIVE' : 'OWNED') : `🪙${char.price}`}</div>
+                `;
+                
+                charElement.onclick = () => {
+                    if (unlockedCharacters.includes(char.id)) {
+                        currentCharacter = char.id;
+                        localStorage.setItem('currentCharacter', currentCharacter.toString());
+                        updateShopDisplay();
+                        showNotification(`${char.name} selected!`, displayColor);
+                    } else if (coins >= char.price) {
+                        coins -= char.price;
+                        localStorage.setItem('dinoCoins', coins.toString());
+                        unlockedCharacters.push(char.id);
+                        localStorage.setItem('dinoCharacters', JSON.stringify(unlockedCharacters));
+                        currentCharacter = char.id;
+                        localStorage.setItem('currentCharacter', currentCharacter.toString());
+                        updateShopDisplay();
+                        showNotification(`🎉 Unlocked ${char.name}!`, displayColor);
+                    }
+                };
+                
+                shopContainer.appendChild(charElement);
+            });
+            
+            // Add colors title
+            const skinTitle = document.createElement('div');
+            skinTitle.innerHTML = '<h3 style="grid-column: 1/-1; text-align: center; margin: 10px 0; color: #2c3e50;">Colors (All Characters)</h3>';
+            shopContainer.appendChild(skinTitle);
+            
+            // Add color variations (work for all characters)
+            skinData.forEach(skin => {
+                const skinElement = document.createElement('div');
+                skinElement.className = 'skin-item';
+                
+                if (unlockedSkins.includes(skin.id)) {
+                    skinElement.classList.add('owned');
+                    if (skin.id === currentSkin) {
+                        skinElement.classList.add('selected');
+                    }
+                }
+                
+                const previewStyle = skin.color === 'rainbow' 
+                    ? 'background: linear-gradient(45deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3); background-size: 200% 200%; animation: rainbow 2s ease infinite;'
+                    : `background: ${skin.color};`;
+                
+                skinElement.innerHTML = `
+                    <div class="skin-preview" style="${previewStyle}"></div>
+                    <div style="font-size: 11px; font-weight: bold;">${skin.name}</div>
+                    <div style="font-size: 10px;">${unlockedSkins.includes(skin.id) ? (skin.id === currentSkin ? 'ACTIVE' : 'OWNED') : `🪙${skin.price}`}</div>
+                `;
+                
+                skinElement.onclick = () => {
+                    if (unlockedSkins.includes(skin.id)) {
+                        currentSkin = skin.id;
+                        localStorage.setItem('currentSkin', currentSkin.toString());
+                        updateShopDisplay();
+                        showNotification(`${skin.name} color selected!`, skin.color === 'rainbow' ? '#FFD700' : skin.color);
+                    } else if (coins >= skin.price) {
+                        coins -= skin.price;
+                        localStorage.setItem('dinoCoins', coins.toString());
+                        unlockedSkins.push(skin.id);
+                        localStorage.setItem('dinoSkins', JSON.stringify(unlockedSkins));
+                        currentSkin = skin.id;
+                        localStorage.setItem('currentSkin', currentSkin.toString());
+                        updateShopDisplay();
+                        showNotification(`🎉 Unlocked ${skin.name} color!`, skin.color === 'rainbow' ? '#FFD700' : skin.color);
+                    }
+                };
+                
+                shopContainer.appendChild(skinElement);
+            });
+        }
+        
+        // Initialize game
+        document.getElementById('highScore').textContent = highScore;
+        document.getElementById('coinCount').textContent = coins;
+        
+        // Load saved data
+        currentCharacter = parseInt(localStorage.getItem('currentCharacter') || '0');
+        unlockedCharacters = JSON.parse(localStorage.getItem('dinoCharacters') || '[0]');
+        
+        restartGame();
+    </script>
+</body>
+</html>
